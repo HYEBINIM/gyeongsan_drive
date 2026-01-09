@@ -1,0 +1,668 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>네이버 스타일 지도 마커 생성기 v2</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans KR', Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 40px 20px;
+        }
+        
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+        
+        .header {
+            text-align: center;
+            color: white;
+            margin-bottom: 40px;
+        }
+        
+        h1 {
+            font-size: 36px;
+            margin-bottom: 12px;
+            font-weight: 700;
+        }
+        
+        .subtitle {
+            font-size: 16px;
+            opacity: 0.9;
+            margin-bottom: 30px;
+        }
+        
+        .download-all {
+            background: white;
+            color: #667eea;
+            border: none;
+            padding: 16px 40px;
+            border-radius: 30px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: 600;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+            transition: all 0.3s ease;
+        }
+        
+        .download-all:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 30px rgba(0,0,0,0.2);
+        }
+        
+        .section {
+            background: white;
+            border-radius: 20px;
+            padding: 30px;
+            margin-bottom: 30px;
+            box-shadow: 0 8px 30px rgba(0,0,0,0.12);
+        }
+        
+        .section-title {
+            font-size: 20px;
+            font-weight: 700;
+            color: #333;
+            margin-bottom: 20px;
+            padding-bottom: 12px;
+            border-bottom: 2px solid #f0f0f0;
+        }
+        
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+            gap: 20px;
+        }
+        
+        .marker-card {
+            background: #f8f9fa;
+            border-radius: 16px;
+            padding: 20px;
+            text-align: center;
+            transition: all 0.3s ease;
+            border: 2px solid transparent;
+        }
+        
+        .marker-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 8px 20px rgba(0,0,0,0.1);
+            border-color: #667eea;
+        }
+        
+        .marker-preview {
+            background: white;
+            border-radius: 12px;
+            padding: 24px;
+            margin-bottom: 16px;
+            min-height: 100px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+        }
+        
+        .marker-name {
+            font-weight: 700;
+            color: #333;
+            margin-bottom: 6px;
+            font-size: 14px;
+        }
+        
+        .marker-size {
+            color: #999;
+            font-size: 11px;
+            margin-bottom: 12px;
+        }
+        
+        .download-btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 10px 24px;
+            border-radius: 20px;
+            cursor: pointer;
+            font-size: 13px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            width: 100%;
+        }
+        
+        .download-btn:hover {
+            transform: scale(1.05);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+        }
+        
+        canvas {
+            display: none;
+        }
+        
+        .color-indicator {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            margin-right: 6px;
+            vertical-align: middle;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🗺️ 지도 마커 생성기 v2</h1>
+            <p class="subtitle">네이버 스타일 플랫 디자인 | 아이콘 포함 | Retina 2x 지원</p>
+            <button class="download-all" onclick="downloadAll()">📦 전체 마커 다운로드 (9개 파일)</button>
+        </div>
+        
+        <div class="section">
+            <div class="section-title">🚌 버스 정류장 마커</div>
+            <div class="grid" id="busMarkers"></div>
+        </div>
+        
+        <div class="section">
+            <div class="section-title">📍 출발 / 도착 마커</div>
+            <div class="grid" id="pinMarkers"></div>
+        </div>
+        
+        <div class="section">
+            <div class="section-title">📍 현재 위치 & 장소 마커</div>
+            <div class="grid" id="placeMarkers"></div>
+        </div>
+    </div>
+    
+    <canvas id="canvas"></canvas>
+
+    <script>
+        const markers = [
+            // 버스 정류장 마커 (버스 아이콘 포함)
+            {
+                name: 'marker_stop.png',
+                title: '일반 정류장',
+                size: '28x28px',
+                category: 'bus',
+                color: '#3b82f6',
+                width: 28,
+                height: 28,
+                draw: (ctx, w, h, color) => {
+                    drawBusStopMarker(ctx, w, h, color);
+                }
+            },
+            {
+                name: 'marker_stop_selected.png',
+                title: '선택된 정류장',
+                size: '28x28px',
+                category: 'bus',
+                color: '#f97316',
+                width: 28,
+                height: 28,
+                draw: (ctx, w, h, color) => {
+                    drawBusStopMarker(ctx, w, h, color);
+                }
+            },
+            
+            // 출발/도착 핀 마커 (텍스트 포함)
+            {
+                name: 'pin_start.png',
+                title: '출발지',
+                size: '44x60px',
+                category: 'pin',
+                color: '#10b981',
+                text: '출발',
+                width: 44,
+                height: 60,
+                draw: (ctx, w, h, color, text) => {
+                    drawPinWithText(ctx, w, h, color, text);
+                }
+            },
+            {
+                name: 'pin_end.png',
+                title: '도착지',
+                size: '44x60px',
+                category: 'pin',
+                color: '#ef4444',
+                text: '도착',
+                width: 44,
+                height: 60,
+                draw: (ctx, w, h, color, text) => {
+                    drawPinWithText(ctx, w, h, color, text);
+                }
+            },
+            {
+                name: 'pin_destination.png',
+                title: '선택된 목적지',
+                size: '48x66px',
+                category: 'pin',
+                color: '#3b82f6',
+                text: '목적',
+                width: 48,
+                height: 66,
+                draw: (ctx, w, h, color, text) => {
+                    drawPinWithText(ctx, w, h, color, text);
+                }
+            },
+            
+            // 현재 위치 (펄스 효과)
+            {
+                name: 'marker_current.png',
+                title: '현재 위치',
+                size: '40x40px',
+                category: 'place',
+                color: '#3b82f6',
+                width: 40,
+                height: 40,
+                draw: (ctx, w, h, color) => {
+                    drawCurrentLocation(ctx, w, h, color);
+                }
+            },
+            
+            // 맛집 마커 (포크/나이프 아이콘)
+            {
+                name: 'marker_restaurant.png',
+                title: '맛집',
+                size: '32x32px',
+                category: 'place',
+                color: '#f97316',
+                icon: 'restaurant',
+                width: 32,
+                height: 32,
+                draw: (ctx, w, h, color, icon) => {
+                    drawPlaceMarker(ctx, w, h, color, icon);
+                }
+            },
+            
+            // 관광지 마커 (카메라 아이콘)
+            {
+                name: 'marker_attraction.png',
+                title: '관광지',
+                size: '32x32px',
+                category: 'place',
+                color: '#8b5cf6',
+                icon: 'camera',
+                width: 32,
+                height: 32,
+                draw: (ctx, w, h, color, icon) => {
+                    drawPlaceMarker(ctx, w, h, color, icon);
+                }
+            },
+            
+            // 행사 마커 (별 아이콘)
+            {
+                name: 'marker_event.png',
+                title: '행사',
+                size: '32x32px',
+                category: 'place',
+                color: '#ec4899',
+                icon: 'star',
+                width: 32,
+                height: 32,
+                draw: (ctx, w, h, color, icon) => {
+                    drawPlaceMarker(ctx, w, h, color, icon);
+                }
+            }
+        ];
+
+        // 버스 정류장 마커 (버스 아이콘 포함)
+        function drawBusStopMarker(ctx, w, h, color) {
+            const centerX = w / 2;
+            const centerY = h / 2;
+            const radius = w / 2.8;
+            
+            // 소프트 섀도우
+            ctx.shadowColor = 'rgba(0, 0, 0, 0.2)';
+            ctx.shadowBlur = 8;
+            ctx.shadowOffsetX = 0;
+            ctx.shadowOffsetY = 2;
+            
+            // 흰색 외곽선
+            ctx.fillStyle = 'white';
+            ctx.beginPath();
+            ctx.arc(centerX, centerY, radius * 1.3, 0, Math.PI * 2);
+            ctx.fill();
+            
+            ctx.shadowColor = 'transparent';
+            
+            // 메인 컬러 원
+            ctx.fillStyle = color;
+            ctx.beginPath();
+            ctx.arc(centerX, centerY, radius, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // 버스 아이콘 그리기 (심플한 버스 모양)
+            const iconSize = radius * 1.2;
+            const busX = centerX - iconSize / 2;
+            const busY = centerY - iconSize / 2;
+            
+            ctx.fillStyle = 'white';
+            
+            // 버스 본체
+            ctx.fillRect(busX + iconSize * 0.15, busY + iconSize * 0.25, iconSize * 0.7, iconSize * 0.5);
+            
+            // 버스 창문
+            ctx.fillStyle = color;
+            ctx.fillRect(busX + iconSize * 0.25, busY + iconSize * 0.35, iconSize * 0.2, iconSize * 0.2);
+            ctx.fillRect(busX + iconSize * 0.55, busY + iconSize * 0.35, iconSize * 0.2, iconSize * 0.2);
+            
+            // 버스 바퀴
+            ctx.fillStyle = 'white';
+            ctx.beginPath();
+            ctx.arc(busX + iconSize * 0.3, busY + iconSize * 0.8, iconSize * 0.1, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.beginPath();
+            ctx.arc(busX + iconSize * 0.7, busY + iconSize * 0.8, iconSize * 0.1, 0, Math.PI * 2);
+            ctx.fill();
+        }
+
+        // 출발/도착 핀 마커 (텍스트 포함)
+        function drawPinWithText(ctx, w, h, color, text) {
+            const centerX = w / 2;
+            const bottomY = h - 4;
+            const circleY = w / 2;
+            const radius = w * 0.38;
+            
+            // 소프트 섀도우
+            ctx.shadowColor = 'rgba(0, 0, 0, 0.25)';
+            ctx.shadowBlur = 12;
+            ctx.shadowOffsetX = 0;
+            ctx.shadowOffsetY = 4;
+            
+            // // 핀 꼬리 (흰색 외곽선)
+            // ctx.fillStyle = 'white';
+            // ctx.beginPath();
+            // ctx.moveTo(centerX - radius * 0.5, circleY + radius * 0.6);
+            // ctx.lineTo(centerX, bottomY);
+            // ctx.lineTo(centerX + radius * 0.5, circleY + radius * 0.6);
+            // ctx.arc(centerX, circleY, radius * 1.15, 0.5, Math.PI - 0.5);
+            // ctx.closePath();
+            // ctx.fill();
+            
+            ctx.shadowColor = 'transparent';
+            
+            // 핀 꼬리 (메인 컬러)
+            ctx.fillStyle = color;
+            ctx.beginPath();
+            ctx.moveTo(centerX - radius * 0.81, circleY + radius * 0.55);
+            ctx.lineTo(centerX, bottomY - 3);
+            ctx.lineTo(centerX + radius * 0.81, circleY + radius * 0.55);
+            ctx.arc(centerX, circleY, radius * 0.95, 0.5, Math.PI - 0.5);
+            ctx.closePath();
+            ctx.fill();
+            
+            // // 원형 외곽선 (흰색)
+            // ctx.fillStyle = 'white';
+            // ctx.beginPath();
+            // ctx.arc(centerX, circleY, radius * 1.15, 0, Math.PI * 2);
+            // ctx.fill();
+            
+            // 원형 메인
+            ctx.fillStyle = color;
+            ctx.beginPath();
+            ctx.arc(centerX, circleY, radius, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // // 하이라이트
+            // const gradient = ctx.createRadialGradient(
+            //     centerX - radius * 0.3, circleY - radius * 0.3, 0,
+            //     centerX, circleY, radius
+            // );
+            // gradient.addColorStop(0, 'rgba(255, 255, 255, 0.4)');
+            // gradient.addColorStop(1, 'rgba(255, 255, 255, 0)');
+            // ctx.fillStyle = gradient;
+            // ctx.beginPath();
+            // ctx.arc(centerX, circleY, radius, 0, Math.PI * 2);
+            // ctx.fill();
+            
+            // 텍스트
+            ctx.fillStyle = 'white';
+            ctx.font = `bold ${radius * 0.9}px -apple-system, sans-serif`;
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText(text, centerX, circleY);
+        }
+
+        // 현재 위치 마커 (펄스 효과)
+        function drawCurrentLocation(ctx, w, h, color) {
+            const centerX = w / 2;
+            const centerY = h / 2;
+            const radius = w / 5;
+            
+            // // 외곽 펄스 1
+            // ctx.fillStyle = color + '20';
+            // ctx.beginPath();
+            // ctx.arc(centerX, centerY, radius * 3.5, 0, Math.PI * 2);
+            // ctx.fill();
+            
+            // 외곽 펄스 2
+            ctx.fillStyle = color + '40';
+            ctx.beginPath();
+            ctx.arc(centerX, centerY, radius * 2.5, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // 소프트 섀도우
+            ctx.shadowColor = 'rgba(0, 0, 0, 0.2)';
+            ctx.shadowBlur = 8;
+            ctx.shadowOffsetX = 0;
+            ctx.shadowOffsetY = 2;
+            
+            // 흰색 외곽선
+            ctx.fillStyle = 'white';
+            ctx.beginPath();
+            ctx.arc(centerX, centerY, radius * 1.8, 0, Math.PI * 2);
+            ctx.fill();
+            
+            ctx.shadowColor = 'transparent';
+            
+            // 메인 원
+            ctx.fillStyle = color;
+            ctx.beginPath();
+            ctx.arc(centerX, centerY, radius * 1.4, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // // 중앙 흰색 점
+            // ctx.fillStyle = 'white';
+            // ctx.beginPath();
+            // ctx.arc(centerX, centerY, radius * 0.6, 0, Math.PI * 2);
+            // ctx.fill();
+            
+            // 방향 화살표 (작은 삼각형)
+            ctx.fillStyle = 'white';
+            ctx.beginPath();
+            ctx.moveTo(centerX, centerY - radius * 0.5);
+            ctx.lineTo(centerX - radius * 0.45, centerY + radius * 0.35);
+            ctx.lineTo(centerX + radius * 0.45, centerY + radius * 0.35);
+            ctx.closePath();
+            ctx.fill();
+        }
+
+        // 장소 마커 (아이콘 포함)
+        function drawPlaceMarker(ctx, w, h, color, iconType) {
+            const centerX = w / 2;
+            const centerY = h / 2;
+            const radius = w / 2.5;
+            
+            // 소프트 섀도우
+            ctx.shadowColor = 'rgba(0, 0, 0, 0.2)';
+            ctx.shadowBlur = 8;
+            ctx.shadowOffsetX = 0;
+            ctx.shadowOffsetY = 2;
+            
+            // 흰색 외곽선
+            ctx.fillStyle = 'white';
+            ctx.beginPath();
+            ctx.arc(centerX, centerY, radius * 1.25, 0, Math.PI * 2);
+            ctx.fill();
+            
+            ctx.shadowColor = 'transparent';
+            
+            // 메인 컬러 원
+            ctx.fillStyle = color;
+            ctx.beginPath();
+            ctx.arc(centerX, centerY, radius, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // 아이콘 그리기
+            ctx.fillStyle = 'white';
+            ctx.strokeStyle = 'white';
+            ctx.lineWidth = 2;
+            ctx.lineCap = 'round';
+            ctx.lineJoin = 'round';
+            
+            const iconSize = radius * 1.1;
+            
+            if (iconType === 'restaurant') {
+                // 포크
+                ctx.beginPath();
+                ctx.moveTo(centerX - iconSize * 0.3, centerY - iconSize * 0.5);
+                ctx.lineTo(centerX - iconSize * 0.3, centerY + iconSize * 0.5);
+                ctx.stroke();
+                
+                ctx.beginPath();
+                ctx.moveTo(centerX - iconSize * 0.5, centerY - iconSize * 0.5);
+                ctx.lineTo(centerX - iconSize * 0.5, centerY);
+                ctx.stroke();
+                
+                ctx.beginPath();
+                ctx.moveTo(centerX - iconSize * 0.1, centerY - iconSize * 0.5);
+                ctx.lineTo(centerX - iconSize * 0.1, centerY);
+                ctx.stroke();
+                
+                // 나이프
+                ctx.beginPath();
+                ctx.moveTo(centerX + iconSize * 0.3, centerY - iconSize * 0.5);
+                ctx.lineTo(centerX + iconSize * 0.3, centerY + iconSize * 0.5);
+                ctx.stroke();
+                
+                ctx.beginPath();
+                ctx.arc(centerX + iconSize * 0.3, centerY - iconSize * 0.3, iconSize * 0.25, 0, Math.PI * 2);
+                ctx.fill();
+                
+            } else if (iconType === 'camera') {
+                // 카메라 본체
+                ctx.fillRect(centerX - iconSize * 0.5, centerY - iconSize * 0.2, iconSize, iconSize * 0.6);
+                
+                // 카메라 상단
+                ctx.fillRect(centerX - iconSize * 0.2, centerY - iconSize * 0.5, iconSize * 0.4, iconSize * 0.3);
+                
+                // 렌즈
+                ctx.fillStyle = color;
+                ctx.beginPath();
+                ctx.arc(centerX, centerY + iconSize * 0.1, iconSize * 0.25, 0, Math.PI * 2);
+                ctx.fill();
+                
+            } else if (iconType === 'star') {
+                // 별 그리기
+                ctx.beginPath();
+                for (let i = 0; i < 5; i++) {
+                    const angle = (i * 4 * Math.PI / 5) - Math.PI / 2;
+                    const x = centerX + Math.cos(angle) * iconSize * 0.5;
+                    const y = centerY + Math.sin(angle) * iconSize * 0.5;
+                    if (i === 0) ctx.moveTo(x, y);
+                    else ctx.lineTo(x, y);
+                }
+                ctx.closePath();
+                ctx.fill();
+            }
+        }
+
+        function generateMarker(marker) {
+            const canvas = document.getElementById('canvas');
+            const ctx = canvas.getContext('2d');
+            
+            canvas.width = marker.width * 2;
+            canvas.height = marker.height * 2;
+            ctx.scale(2, 2);
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            marker.draw(ctx, marker.width, marker.height, marker.color, marker.text || marker.icon);
+            
+            return canvas.toDataURL('image/png');
+        }
+
+        function downloadMarker(marker) {
+            const dataUrl = generateMarker(marker);
+            const link = document.createElement('a');
+            link.download = marker.name;
+            link.href = dataUrl;
+            link.click();
+        }
+
+        function createMarkerCard(marker) {
+            const card = document.createElement('div');
+            card.className = 'marker-card';
+            
+            const preview = document.createElement('div');
+            preview.className = 'marker-preview';
+            const img = document.createElement('img');
+            img.src = generateMarker(marker);
+            img.style.maxWidth = '100%';
+            img.style.height = 'auto';
+            preview.appendChild(img);
+            
+            const name = document.createElement('div');
+            name.className = 'marker-name';
+            const colorDot = document.createElement('span');
+            colorDot.className = 'color-indicator';
+            colorDot.style.background = marker.color;
+            name.appendChild(colorDot);
+            name.appendChild(document.createTextNode(marker.title));
+            
+            const size = document.createElement('div');
+            size.className = 'marker-size';
+            size.textContent = marker.size;
+            
+            const btn = document.createElement('button');
+            btn.className = 'download-btn';
+            btn.textContent = '다운로드';
+            btn.onclick = () => downloadMarker(marker);
+            
+            card.appendChild(preview);
+            card.appendChild(name);
+            card.appendChild(size);
+            card.appendChild(btn);
+            
+            return card;
+        }
+
+        function renderMarkers() {
+            const busMarkers = document.getElementById('busMarkers');
+            const pinMarkers = document.getElementById('pinMarkers');
+            const placeMarkers = document.getElementById('placeMarkers');
+            
+            markers.forEach(marker => {
+                const card = createMarkerCard(marker);
+                
+                if (marker.category === 'bus') {
+                    busMarkers.appendChild(card);
+                } else if (marker.category === 'pin') {
+                    pinMarkers.appendChild(card);
+                } else if (marker.category === 'place') {
+                    placeMarkers.appendChild(card);
+                }
+            });
+        }
+
+        async function downloadAll() {
+            const confirmMsg = `총 ${markers.length}개의 마커를 순차적으로 다운로드합니다.\n\n` +
+                              `파일 저장 위치를 확인하세요.\n\n계속하시겠습니까?`;
+            
+            if (!confirm(confirmMsg)) return;
+            
+            for (let i = 0; i < markers.length; i++) {
+                downloadMarker(markers[i]);
+                await new Promise(resolve => setTimeout(resolve, 400));
+            }
+            
+            alert('모든 마커 다운로드가 완료되었습니다!');
+        }
+
+        renderMarkers();
+    </script>
+</body>
+</html>

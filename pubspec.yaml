@@ -1,0 +1,66 @@
+name: gyeongsan_drive
+description: 경산 버스 투어 - 노선버스 연계 지역 명소·문화유산 안내 서비스
+publish_to: 'none'
+version: 1.0.0+1
+
+environment:
+  sdk: '>=3.3.0 <4.0.0'
+  flutter: '>=3.32.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+  
+  # 네이버 지도 SDK
+  flutter_naver_map: ^1.3.3
+  
+  # 위치 및 권한
+  geolocator: ^13.0.2
+  permission_handler: ^11.3.1
+  
+  # HTTP 통신 (공공 API 연동)
+  dio: ^5.7.0
+  http: ^1.2.2
+  xml: ^6.5.0
+
+  firebase_core: ^2.24.0
+  cloud_firestore: ^4.13.0
+  
+  # 상태 관리
+  provider: ^6.1.2
+  riverpod: ^2.6.1
+  flutter_riverpod: ^2.6.1
+  
+  # UI 및 아이콘
+  cupertino_icons: ^1.0.8
+  google_fonts: ^6.2.1
+  flutter_svg: ^2.0.14
+  cached_network_image: ^3.4.1
+  
+  # 유틸리티
+  intl: ^0.20.1
+  url_launcher: ^6.3.1
+  shared_preferences: ^2.3.3
+  
+  # 로딩 및 다이얼로그
+  flutter_spinkit: ^5.2.1
+  fluttertoast: ^8.2.8
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^5.0.0
+
+flutter:
+  uses-material-design: true
+  
+  # 에셋 경로
+  assets:
+    - assets/images/
+    # - assets/icons/
+  
+  # 폰트 (추후 추가)
+  # fonts:
+  #   - family: NotoSansKR
+  #     fonts:
+  #       - asset: assets/fonts/NotoSansKR-Regular.ttf
