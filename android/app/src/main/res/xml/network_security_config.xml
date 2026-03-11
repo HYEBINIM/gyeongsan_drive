@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 네트워크 보안 설정: 특정 IP에 대해서만 HTTP 통신 허용 -->
+<network-security-config>
+    <!-- 기본 정책: HTTPS만 허용 (안전) -->
+    <base-config cleartextTrafficPermitted="false" />
+
+    <!-- 도메인별 예외 설정 -->
+    <domain-config cleartextTrafficPermitted="true">
+        <!-- 도로정보 서버 IP: HTTP 허용 -->
+        <domain includeSubdomains="false">112.216.244.61</domain>
+    </domain-config>
+</network-security-config>
