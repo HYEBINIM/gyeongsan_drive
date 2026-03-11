@@ -1,46 +1,148 @@
-name: gyeongsan_drive
-description: 경산 버스 투어 - 노선버스 연계 지역 명소·문화유산 안내 서비스
-publish_to: 'none'
-version: 1.0.0+1
+name: east
+description: "A new Flutter project."
+# The following line prevents the package from being accidentally published to
+# pub.dev using `flutter pub publish`. This is preferred for private packages.
+publish_to: 'none' # Remove this line if you wish to publish to pub.dev
+
+# The following defines the version and build number for your application.
+# A version number is three numbers separated by dots, like 1.2.43
+# followed by an optional build number separated by a +.
+# Both the version and the builder number may be overridden in flutter
+# build by specifying --build-name and --build-number, respectively.
+# In Android, build-name is used as versionName while build-number used as versionCode.
+# Read more about Android versioning at https://developer.android.com/studio/publish/versioning
+# In iOS, build-name is used as CFBundleShortVersionString while build-number is used as CFBundleVersion.
+# Read more about iOS versioning at
+# https://developer.apple.com/library/archive/documentation/General/Reference/InfoPlistKeyReference/Articles/CoreFoundationKeys.html
+# In Windows, build-name is used as the major, minor, and patch parts
+# of the product and file versions while build-number is used as the build suffix.
+version: 1.0.1+26
 
 environment:
-  sdk: '>=3.3.0 <4.0.0'
-  flutter: '>=3.32.0'
+  sdk: ^3.9.0
 
+# Dependencies specify other packages that your package needs in order to work.
+# To automatically upgrade your package dependencies to the latest versions
+# consider running `flutter pub upgrade --major-versions`. Alternatively,
+# dependencies can be manually updated by changing the version numbers below to
+# the latest version available on pub.dev. To see which dependencies have newer
+# versions available, run `flutter pub outdated`.
 dependencies:
   flutter:
     sdk: flutter
-  
+
+  # The following adds the Cupertino Icons font to your application.
+  # Use with the CupertinoIcons class for iOS style icons.
+  cupertino_icons: ^1.0.8
+
+  # 상태 관리 - MVVM 패턴
+  provider: ^6.1.2
+  equatable: ^2.0.7
+
+  # 이미지 처리 (GIF 애니메이션 지원)
+  image: ^4.3.0
+
+  # Firebase
+  firebase_core: ^4.2.1
+  firebase_auth: ^6.1.2
+  cloud_firestore: ^6.1.0         # Firestore
+  firebase_messaging: ^16.0.4     # FCM 푸시 알림
+  google_sign_in: ^6.2.1
+  cloud_functions: ^6.0.4
+  firebase_storage: ^13.0.5
+
+  # Firestore GeoQuery
+  geoflutterfire_plus: ^0.0.33     # GeoPoint 기반 반경 검색
+
+  # 권한 관리
+  permission_handler: ^12.0.1
+
+  # 로컬 저장소
+  shared_preferences: ^2.3.3
+
+  # HTTP 요청
+  http: ^1.2.2
+
+  # 암호화
+  crypto: ^3.0.3
+
+  # 국제화 및 숫자 포맷팅
+  intl: ^0.20.2
+
+  # 차트 및 그래프
+  fl_chart: ^1.1.1
+  syncfusion_flutter_gauges: ^31.2.5
+
+  # 스켈레톤 UI 애니메이션
+  shimmer: ^3.0.0
+
+  # RemixIcon 아이콘
+  remixicon: ^1.4.1
+
+  # 지도 및 위치
+  flutter_map: ^8.2.2       # Leaflet 기반 지도
+  flutter_map_animations: ^0.9.0  # 지도 애니메이션
+  latlong2: ^0.9.0          # 위도/경도 좌표 처리
+  geolocator: ^14.0.2       # 현재 위치 가져오기
+  geolocator_web: ^4.1.1    # Web에서 위치 정보 사용
+  geocoding: ^4.0.0         # GPS 좌표 ↔ 주소 변환 (역지오코딩)
+
+  # 외부 앱 연동
+  url_launcher: ^6.3.1      # 전화, 이메일, 웹 등 외부 앱 실행
+  webview_flutter: ^4.10.0  # 앱 내 웹뷰
+  webview_flutter_android: ^4.10.5  # Android 전용 웹뷰 설정
+
+  # 로컬 알림 (시스템 진동/채널 사용)
+  flutter_local_notifications: ^19.5.0
+
+  # 연락처 관리
+  flutter_contacts: ^1.1.9  # 연락처 선택 및 관리
+
+  # 환경 변수 관리
+  flutter_dotenv: ^6.0.0    # .env 파일을 통한 API 키 관리
+
+  # 음성 인식 및 출력
+  speech_to_text: ^7.0.0    # 음성 인식 (STT)
+  flutter_tts: ^4.2.0       # 음성 출력 (TTS)
+
+  # 로깅
+  logger: ^2.4.0            # 구조화된 로깅
+
+ # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
   # 네이버 지도 SDK
-  flutter_naver_map: ^1.3.3
+  flutter_naver_map: ^1.4.1
   
-  # 위치 및 권한
-  geolocator: ^13.0.2
-  permission_handler: ^11.3.1
+  # # 위치 및 권한
+  # geolocator: ^13.0.2
+  # permission_handler: ^11.3.1
   
   # HTTP 통신 (공공 API 연동)
   dio: ^5.7.0
-  http: ^1.2.2
+  # http: ^1.2.2
   xml: ^6.5.0
 
-  firebase_core: ^2.24.0
-  cloud_firestore: ^4.13.0
+  # firebase_core: ^2.24.0
+  # cloud_firestore: ^4.13.0
   
   # 상태 관리
-  provider: ^6.1.2
+  # provider: ^6.1.2
   riverpod: ^2.6.1
   flutter_riverpod: ^2.6.1
   
   # UI 및 아이콘
-  cupertino_icons: ^1.0.8
+  # cupertino_icons: ^1.0.8
   google_fonts: ^6.2.1
   flutter_svg: ^2.0.14
   cached_network_image: ^3.4.1
+  flutter_cache_manager: ^3.4.1
   
   # 유틸리티
-  intl: ^0.20.1
-  url_launcher: ^6.3.1
-  shared_preferences: ^2.3.3
+  # intl: ^0.20.1
+  # url_launcher: ^6.3.1
+  # shared_preferences: ^2.3.3
+
+  # MCP
+  mcp_client: ^1.1.0
   
   # 로딩 및 다이얼로그
   flutter_spinkit: ^5.2.1
@@ -49,18 +151,78 @@ dependencies:
 dev_dependencies:
   flutter_test:
     sdk: flutter
-  flutter_lints: ^5.0.0
 
+  # The "flutter_lints" package below contains a set of recommended lints to
+  # encourage good coding practices. The lint set provided by the package is
+  # activated in the `analysis_options.yaml` file located at the root of your
+  # package. See that file for information about deactivating specific lint
+  # rules and activating additional ones.
+  flutter_lints: ^6.0.0
+
+  # 앱 아이콘 자동 생성
+  flutter_launcher_icons: ^0.14.1
+
+# For information on the generic Dart part of this file, see the
+# following page: https://dart.dev/tools/pub/pubspec
+
+# The following section is specific to Flutter packages.
 flutter:
+
+  # The following line ensures that the Material Icons font is
+  # included with your application, so that you can use the icons in
+  # the material Icons class.
   uses-material-design: true
-  
-  # 에셋 경로
+
+  # 애플리케이션에서 사용할 assets 등록
   assets:
-    - assets/images/
-    # - assets/icons/
-  
-  # 폰트 (추후 추가)
-  # fonts:
-  #   - family: NotoSansKR
-  #     fonts:
-  #       - asset: assets/fonts/NotoSansKR-Regular.ttf
+    - .env
+    - assets/fonts/
+    - assets/icons/
+    - assets/logos/
+    - assets/vehicle/
+    - assets/vehicle/models/
+    - assets/images/  # 차량 모델 이미지
+
+  # An image asset can refer to one or more resolution-specific "variants", see
+  # https://flutter.dev/to/resolution-aware-images
+
+  # For details regarding adding assets from package dependencies, see
+  # https://flutter.dev/to/asset-from-package
+
+  # 커스텀 폰트 등록
+  fonts:
+    - family: Pretendard
+      fonts:
+        - asset: assets/fonts/Pretendard-Thin.otf
+          weight: 100
+        - asset: assets/fonts/Pretendard-ExtraLight.otf
+          weight: 200
+        - asset: assets/fonts/Pretendard-Light.otf
+          weight: 300
+        - asset: assets/fonts/Pretendard-Regular.otf
+          weight: 400
+        - asset: assets/fonts/Pretendard-Medium.otf
+          weight: 500
+        - asset: assets/fonts/Pretendard-SemiBold.otf
+          weight: 600
+        - asset: assets/fonts/Pretendard-Bold.otf
+          weight: 700
+        - asset: assets/fonts/Pretendard-ExtraBold.otf
+          weight: 800
+        - asset: assets/fonts/Pretendard-Black.otf
+          weight: 900
+
+# 앱 아이콘 설정
+flutter_launcher_icons:
+  android: true
+  ios: true
+  image_path: "assets/icons/ic_app.png"
+  # iOS App Store에서 알파 채널 제거 (필수)
+  remove_alpha_ios: true
+  # Android Adaptive Icon (배경색 지정)
+  adaptive_icon_background: "#181818"
+  adaptive_icon_foreground: "assets/icons/ic_app.png"
+  # 아이콘 크기 조정 (여백 추가) - 16~24 권장
+  adaptive_icon_foreground_inset: 24
+
+

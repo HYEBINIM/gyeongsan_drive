@@ -1,0 +1,71 @@
+{
+  "project_info": {
+    "project_number": "230969693841",
+    "firebase_url": "https://test-fe6b6-default-rtdb.asia-southeast1.firebasedatabase.app",
+    "project_id": "test-fe6b6",
+    "storage_bucket": "test-fe6b6.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:230969693841:android:379aa3b6bb02d3c49d9130",
+        "android_client_info": {
+          "package_name": "com.eastcompany.east"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "230969693841-el8fg3q842hstdra22hd3nhrhrlleav9.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.eastcompany.east",
+            "certificate_hash": "0932e8f1333175e649d93dff75abf9ac72658a21"
+          }
+        },
+        {
+          "client_id": "230969693841-guvmcchdvinl9j5urv55hq3uv5ss3k4q.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.eastcompany.east",
+            "certificate_hash": "33121cb030072e4c45460b9bd62d3baf24d02de3"
+          }
+        },
+        {
+          "client_id": "230969693841-janas6n4lllt3cnm6fdonj2u6rpljptn.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.eastcompany.east",
+            "certificate_hash": "71e3d81569d1eefc38b4a011ed29c01b77542d0e"
+          }
+        },
+        {
+          "client_id": "230969693841-u8vgdl7j7sttae0pf31bidpi896s81up.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.eastcompany.east",
+            "certificate_hash": "51e59d1e3469cd62d224ca5a3c95fe1de24cc39c"
+          }
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBgaLFu8F6oeTkxS7Q4HGplsPSDfB971xM"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "230969693841-0j4i533oht2b4ol44reh35q2lonns636.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.eastcompany.east"
+              }
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
