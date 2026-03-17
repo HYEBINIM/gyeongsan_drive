@@ -98,17 +98,24 @@ class _CurrentLocationTabState extends State<CurrentLocationTab> {
       _isLoading = true;
       _errorMessage = '';
     });
-    
+
     String locationName;
     try {
       locationName = await _determinePositionAndReverseGeocode();
-      _currentLocationName = locationName; 
-      
+      _currentLocationName = locationName;
+
+      print('🔍 위치 정보: $_currentLocationName (위도: $_currentLat, 경도: $_currentLon)');
+
       final hotplaces = await _apiService.fetchHotplaces(locationName: _currentLocationName);
+      print('✅ HOT 플레이스 로드 완료: ${hotplaces.length}개');
+
       final nearbyPlaces = await _apiService.fetchNearbyPlaces(
           lat: _currentLat, lon: _currentLon);
+      print('✅ 내 주변 인기 장소 로드 완료: ${nearbyPlaces.length}개');
+
       final events = await _apiService.fetchEvents(
           lat: _currentLat, lon: _currentLon);
+      print('✅ 문화행사 로드 완료: ${events.length}개');
 
       setState(() {
         _hotplaces = hotplaces;
@@ -116,15 +123,20 @@ class _CurrentLocationTabState extends State<CurrentLocationTab> {
         _events = events;
         _isLoading = false;
       });
+
+      // 모든 데이터가 비어있는 경우 경고 메시지
+      if (hotplaces.isEmpty && nearbyPlaces.isEmpty && events.isEmpty) {
+        print('⚠️ 경고: 모든 데이터가 비어있습니다. API 서버 상태를 확인하세요.');
+      }
     } catch (e) {
       setState(() {
-        String errorMessage = e.toString().contains('위치') || e.toString().contains('네이버') 
-            ? e.toString().replaceFirst('Exception: ', '') 
+        String errorMessage = e.toString().contains('위치') || e.toString().contains('네이버')
+            ? e.toString().replaceFirst('Exception: ', '')
             : '데이터 로드 실패: ${e.toString()}';
         _errorMessage = errorMessage;
         _isLoading = false;
       });
-      print('Fetching data failed: $e');
+      print('❌ Fetching data failed: $e');
     }
   }
 

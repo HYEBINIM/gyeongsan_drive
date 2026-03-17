@@ -792,29 +792,52 @@ class _NavigationScreenState extends State<NavigationScreen> {
 
           // 하단 현재 위치 버튼
           Positioned(
-            bottom: 20,
+            bottom: 60,
             right: 16,
-            child: FloatingActionButton(
-              onPressed: () async {
-                if (_mapController != null && _currentPosition != null) {
-                  try {
-                    final cameraUpdate = NCameraUpdate.scrollAndZoomTo(
-                      target: NLatLng(
-                        _currentPosition!.latitude,
-                        _currentPosition!.longitude,
+            child: Container(
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(28),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.2),
+                    blurRadius: 8,
+                    offset: const Offset(0, 2),
+                  ),
+                ],
+              ),
+              child: Material(
+                color: const Color(0xFF1C1C1E),
+                borderRadius: BorderRadius.circular(28),
+                child: InkWell(
+                  onTap: () async {
+                    if (_mapController != null && _currentPosition != null) {
+                      try {
+                        final cameraUpdate = NCameraUpdate.scrollAndZoomTo(
+                          target: NLatLng(
+                            _currentPosition!.latitude,
+                            _currentPosition!.longitude,
+                          ),
+                          zoom: 16,
+                        );
+                        await _mapController!.updateCamera(cameraUpdate);
+                      } catch (e) {
+                        print('카메라 이동 오류: $e');
+                      }
+                    }
+                  },
+                  borderRadius: BorderRadius.circular(28),
+                  child: Container(
+                    width: 56,
+                    height: 56,
+                    child: const Center(
+                      child: Icon(
+                        Icons.my_location,
+                        color: _primaryColor,
+                        size: 24,
                       ),
-                      zoom: 16,
-                    );
-                    await _mapController!.updateCamera(cameraUpdate);
-                  } catch (e) {
-                    print('카메라 이동 오류: $e');
-                  }
-                }
-              },
-              backgroundColor: Colors.white,
-              child: const Icon(
-                Icons.my_location,
-                color: _primaryColor,
+                    ),
+                  ),
+                ),
               ),
             ),
           ),

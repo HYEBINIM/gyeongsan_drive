@@ -132,7 +132,7 @@ enum ViewMode {
 class BusNumberCard extends StatelessWidget {
   final String routeName;
   final VoidCallback? onTap;
-  
+
   const BusNumberCard({
     Key? key,
     required this.routeName,
@@ -621,7 +621,10 @@ class _BusTabState extends State<BusTab> with SingleTickerProviderStateMixin {
   }
   
   Future<void> _addRoutePath() async {
-    final coords = _selectedRouteStops.map((s) => NLatLng(s.lat, s.lon)).toList();
+    final coords = _selectedRouteStops
+        .where((s) => s.lat != null && s.lon != null)
+        .map((s) => NLatLng(s.lat!, s.lon!))
+        .toList();
     
     await _mapController!.addOverlay(NPathOverlay(
       id: 'route_path',
@@ -638,7 +641,7 @@ class _BusTabState extends State<BusTab> with SingleTickerProviderStateMixin {
     
     final startMarker = NMarker(
       id: 'pin_start',
-      position: NLatLng(_selectedRouteStops.first.lat, _selectedRouteStops.first.lon),
+      position: NLatLng(_selectedRouteStops.first.lat ?? 0, _selectedRouteStops.first.lon ?? 0),
       icon: const NOverlayImage.fromAssetImage('assets/images/pin_start.png'),
       size: const Size(40, 56),
       anchor: const NPoint(0.5, 1.0),
@@ -656,7 +659,7 @@ class _BusTabState extends State<BusTab> with SingleTickerProviderStateMixin {
     if (_selectedRouteStops.length > 1) {
       final endMarker = NMarker(
         id: 'pin_end',
-        position: NLatLng(_selectedRouteStops.last.lat, _selectedRouteStops.last.lon),
+        position: NLatLng(_selectedRouteStops.last.lat ?? 0, _selectedRouteStops.last.lon ?? 0),
         icon: const NOverlayImage.fromAssetImage('assets/images/pin_end.png'),
         size: const Size(40, 56),
         anchor: const NPoint(0.5, 1.0),
@@ -1058,17 +1061,19 @@ class _BusTabState extends State<BusTab> with SingleTickerProviderStateMixin {
   
   void _fitMapToRoute() {
     if (_selectedRouteStops.isEmpty || _mapController == null) return;
-  
-    double minLat = _selectedRouteStops.first.lat;
-    double maxLat = _selectedRouteStops.first.lat;
-    double minLon = _selectedRouteStops.first.lon;
-    double maxLon = _selectedRouteStops.first.lon;
-  
+
+    double minLat = _selectedRouteStops.first.lat ?? 0;
+    double maxLat = _selectedRouteStops.first.lat ?? 0;
+    double minLon = _selectedRouteStops.first.lon ?? 0;
+    double maxLon = _selectedRouteStops.first.lon ?? 0;
+
     for (var stop in _selectedRouteStops) {
-      minLat = math.min(minLat, stop.lat);
-      maxLat = math.max(maxLat, stop.lat);
-      minLon = math.min(minLon, stop.lon);
-      maxLon = math.max(maxLon, stop.lon);
+      if (stop.lat != null && stop.lon != null) {
+        minLat = math.min(minLat, stop.lat!);
+        maxLat = math.max(maxLat, stop.lat!);
+        minLon = math.min(minLon, stop.lon!);
+        maxLon = math.max(maxLon, stop.lon!);
+      }
     }
   
     _mapController!.updateCamera(
@@ -1413,27 +1418,71 @@ class _BusTabState extends State<BusTab> with SingleTickerProviderStateMixin {
             if (!_showNavigationButton)
               _buildBottomPanel(),
             
-            // ✅ 현재 위치 버튼 - 하단패널의 위에 고정
-            AnimatedBuilder(
-              animation: _sheetController,
-              builder: (context, child) {
-                final screenHeight = MediaQuery.of(context).size.height;
-                final sheetHeight = _sheetController.isAttached 
-                    ? screenHeight * _sheetController.size
-                    : screenHeight * _initialChildSize;
+            // ✅ 현재 위치 버튼 - 하단패널/안내버튼 위에 고정
+            if (!_showNavigationButton)
+              NotificationListener<DraggableScrollableNotification>(
+                onNotification: (notification) {
+                  // 패널 위치가 변경될 때마다 호출됨
+                  return false;
+                },
+                child: AnimatedBuilder(
+                  animation: _sheetController,
+                  builder: (context, child) {
+                    final screenHeight = MediaQuery.of(context).size.height;
+                    final sheetSize = _sheetController.isAttached
+                        ? _sheetController.size
+                        : _initialChildSize;
+                    final sheetPixelHeight = screenHeight * sheetSize;
+                    const double fixedGap = 16.0; // 고정 간격
 
-                return Positioned(
-                  bottom: sheetHeight,
-                  right: AppSpacing.md,
-                  child: child!,
-                );
-              },
-              child: SafeArea(
+                    return Positioned(
+                      bottom: sheetPixelHeight + fixedGap,
+                      right: AppSpacing.md,
+                      child: child!,
+                    );
+                  },
+                  child: Container(
+                    width: 56,
+                    height: 56,
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(28),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.2),
+                          blurRadius: 8,
+                          offset: const Offset(0, 2),
+                        ),
+                      ],
+                    ),
+                    child: Material(
+                      color: AppColors.surface,
+                      borderRadius: BorderRadius.circular(28),
+                      child: InkWell(
+                        onTap: _moveToCurrentLocation,
+                        borderRadius: BorderRadius.circular(28),
+                        child: Center(
+                          child: Icon(
+                            Icons.my_location,
+                            size: 24,
+                            color: AppColors.primary,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+
+            // 안내시작 버튼 표시 시
+            if (_showNavigationButton)
+              Positioned(
+                bottom: 110,
+                right: AppSpacing.md,
                 child: Container(
-                  width: 44,
-                  height: 44,
+                  width: 56,
+                  height: 56,
                   decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(22),
+                    borderRadius: BorderRadius.circular(28),
                     boxShadow: [
                       BoxShadow(
                         color: Colors.black.withOpacity(0.2),
@@ -1443,17 +1492,16 @@ class _BusTabState extends State<BusTab> with SingleTickerProviderStateMixin {
                     ],
                   ),
                   child: Material(
-                    color: AppColors.surface,
-                    borderRadius: BorderRadius.circular(22),
-                    child: InkWell(
-                      onTap: _moveToCurrentLocation,
-                      borderRadius: BorderRadius.circular(22),
-                      child: Center(
-                        child: Icon(
-                          Icons.my_location,
-                          size: 20,
-                          color: AppColors.primary,
-                        ),
+                  color: AppColors.surface,
+                  borderRadius: BorderRadius.circular(28),
+                  child: InkWell(
+                    onTap: _moveToCurrentLocation,
+                    borderRadius: BorderRadius.circular(28),
+                    child: Center(
+                      child: Icon(
+                        Icons.my_location,
+                        size: 24,
+                        color: AppColors.primary,
                       ),
                     ),
                   ),

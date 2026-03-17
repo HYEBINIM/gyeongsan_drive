@@ -30,7 +30,7 @@ class BusRoutePlaces {
 
 class ApiService {
   
-  static const String _apiBaseUrl = 'http://211.58.207.209:2441/api/v1'; 
+  static const String _apiBaseUrl = 'http://211.58.207.216:2441/api/v1'; 
   
   // 카카오 API 키 (여기에 발급받은 REST API 키를 입력하세요)
   static const String _kakaoRestApiKey = '2d4a8ae426cac5566021305177587cef';
@@ -465,13 +465,13 @@ class ApiService {
     double radiusKm = 0.5,
   }) async {
     final url = Uri.parse('$_apiBaseUrl/bus/route/$routeId/places?city=$cityName&radius=$radiusKm');
-    
+
     try {
       final response = await http.get(url);
-  
+
       if (response.statusCode == 200) {
         final dynamic responseData = json.decode(utf8.decode(response.bodyBytes));
-        
+
         if (responseData is Map) {
           // ⭐ Map<dynamic, dynamic>을 Map<String, dynamic>으로 캐스팅
           final Map<String, dynamic> data = Map<String, dynamic>.from(responseData);
@@ -492,6 +492,48 @@ class ApiService {
     } catch (e) {
       print('Route Places Request error: $e');
       return BusRoutePlaces(restaurants: [], attractions: [], events: []);
+    }
+  }
+
+  // --- 10-1. ⭐ 버스 노선의 실제 운행 경로 GPS 좌표 가져오기 (NEW) ---
+  Future<BusRoutePath?> fetchBusRoutePath({
+    required String routeId,
+    required String cityName,
+  }) async {
+    // ⭐ URL 인코딩을 위해 Uri.http() 사용
+    final url = Uri.http(
+      '211.58.207.216:2441',
+      '/api/v1/bus/route/$routeId/path',
+      {'city': cityName},
+    );
+
+    print('🌐 버스 실제 경로 API 호출: $url');
+
+    try {
+      final response = await http.get(url);
+
+      if (response.statusCode == 200) {
+        final dynamic responseData = json.decode(utf8.decode(response.bodyBytes));
+
+        if (responseData is Map) {
+          final Map<String, dynamic> data = Map<String, dynamic>.from(responseData);
+          final routePath = BusRoutePath.fromJson(data);
+          print('✅ 노선 실제 경로 조회 성공: ${routePath.coordinates.length}개 GPS 좌표');
+          return routePath;
+        } else {
+          print('❌ Route Path API 응답 형식 오류');
+          return null;
+        }
+      } else if (response.statusCode == 404) {
+        print('⚠️ Route Path API 미구현 (404) - 정류장 좌표 사용 필요');
+        return null;
+      } else {
+        print('❌ Route Path API Failed: ${response.statusCode}');
+        return null;
+      }
+    } catch (e) {
+      print('❌ Route Path Request error: $e');
+      return null;
     }
   }
 

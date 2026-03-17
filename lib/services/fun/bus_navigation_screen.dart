@@ -48,6 +48,8 @@ class _BusNavigationScreenState extends State<BusNavigationScreen> {
   List<BusRouteStop> _routeStops = [];
   BusRouteStop? _destinationStop;
   int? _currentStopIndex;
+  int? _destinationStopIndex; // 하차 정류장 인덱스
+  BusRoutePath? _actualRoutePath; // 실제 버스 운행 경로 GPS 좌표
   
   // 거리 계산
   int? _distanceToStop; // 현재 위치 → 탑승 정류장
@@ -102,13 +104,16 @@ class _BusNavigationScreenState extends State<BusNavigationScreen> {
       // 2. 버스 노선 정류장 정보 가져오기
       await _loadRouteStops();
 
-      // 3. 목적지와 가장 가까운 하차 정류장 찾기
+      // 3. 버스 노선의 실제 운행 경로 GPS 좌표 가져오기
+      await _loadActualRoutePath();
+
+      // 4. 목적지와 가장 가까운 하차 정류장 찾기
       _findDestinationStop();
 
-      // 4. 거리 계산
+      // 5. 거리 계산
       _calculateDistances();
 
-      // 5. 실시간 위치 추적 시작
+      // 6. 실시간 위치 추적 시작
       _startLocationTracking();
 
       setState(() {
@@ -169,10 +174,10 @@ class _BusNavigationScreenState extends State<BusNavigationScreen> {
       
       for (int i = 0; i < stops.length; i++) {
         final distance = Geolocator.distanceBetween(
-          stops[i].lat,
-          stops[i].lon,
-          widget.nearestStop.lat,
-          widget.nearestStop.lon,
+          stops[i].lat ?? 0,
+          stops[i].lon ?? 0,
+          widget.nearestStop.lat ?? 0,
+          widget.nearestStop.lon ?? 0,
         );
         
         if (distance < minDistance) {
@@ -194,6 +199,32 @@ class _BusNavigationScreenState extends State<BusNavigationScreen> {
     }
   }
 
+  /// 버스 노선의 실제 운행 경로 GPS 좌표 로드
+  Future<void> _loadActualRoutePath() async {
+    try {
+      final routePath = await _apiService.fetchBusRoutePath(
+        routeId: widget.selectedRoute.routeId,
+        cityName: widget.selectedRoute.cityName ?? '경산',
+      );
+
+      setState(() {
+        _actualRoutePath = routePath;
+      });
+
+      if (routePath != null) {
+        print('✅ 실제 버스 운행 경로 ${routePath.coordinates.length}개 GPS 좌표 로드 완료');
+      } else {
+        print('⚠️ 실제 경로 데이터 없음 - 정류장 좌표로 대체');
+      }
+    } catch (e) {
+      print('실제 경로 로드 오류: $e');
+      // 에러 발생 시 정류장 좌표 사용
+      setState(() {
+        _actualRoutePath = null;
+      });
+    }
+  }
+
   /// 목적지와 가장 가까운 하차 정류장 찾기
   void _findDestinationStop() {
     if (_routeStops.isEmpty || _currentStopIndex == null) return;
@@ -206,8 +237,8 @@ class _BusNavigationScreenState extends State<BusNavigationScreen> {
     for (int i = _currentStopIndex! + 1; i < _routeStops.length; i++) {
       final stop = _routeStops[i];
       final distance = Geolocator.distanceBetween(
-        stop.lat,
-        stop.lon,
+        stop.lat ?? 0,
+        stop.lon ?? 0,
         widget.destinationLat,
         widget.destinationLng,
       );
@@ -221,12 +252,14 @@ class _BusNavigationScreenState extends State<BusNavigationScreen> {
 
     setState(() {
       _destinationStop = closestStop;
+      _destinationStopIndex = closestStopIndex >= 0 ? closestStopIndex : null;
       if (closestStop != null && _currentStopIndex != null) {
         _remainingStops = closestStopIndex - _currentStopIndex!;
       }
     });
 
     print('✅ 하차 정류장: ${closestStop?.stopName}');
+    print('하차 정류장 인덱스: $closestStopIndex');
     print('남은 정류장: $_remainingStops개');
   }
 
@@ -245,8 +278,8 @@ class _BusNavigationScreenState extends State<BusNavigationScreen> {
     // 하차 정류장 → 목적지
     if (_destinationStop != null) {
       _distanceToDestination = Geolocator.distanceBetween(
-        _destinationStop!.lat,
-        _destinationStop!.lon,
+        _destinationStop!.lat ?? 0,
+        _destinationStop!.lon ?? 0,
         widget.destinationLat,
         widget.destinationLng,
       ).round();
@@ -300,8 +333,8 @@ class _BusNavigationScreenState extends State<BusNavigationScreen> {
         final distanceToAlighting = Geolocator.distanceBetween(
           position.latitude,
           position.longitude,
-          _destinationStop!.lat,
-          _destinationStop!.lon,
+          _destinationStop!.lat ?? 0,
+          _destinationStop!.lon ?? 0,
         ).round();
 
         // 하차 정류장 근처 (100m 이내)
@@ -482,18 +515,60 @@ class _BusNavigationScreenState extends State<BusNavigationScreen> {
     if (_mapController == null || _routeStops.isEmpty) return;
 
     try {
-      // 경로 그리기
-      final coords = _routeStops.map((s) => NLatLng(s.lat, s.lon)).toList();
-      
-      _routePath = NPathOverlay(
-        id: 'bus_route',
-        coords: coords,
-        width: 8,
-        color: _primaryColor,
-        outlineColor: Colors.white,
-        outlineWidth: 2,
-      );
-      await _mapController!.addOverlay(_routePath!);
+      // 경로 그리기 - 실제 버스 운행 경로 사용 또는 정류장 좌표 사용
+      List<NLatLng> coords = [];
+
+      if (_actualRoutePath != null && _actualRoutePath!.coordinates.isNotEmpty) {
+        // ✅ 실제 버스 운행 경로 GPS 좌표 사용 (서버에서 제공)
+        if (_currentStopIndex != null && _destinationStopIndex != null) {
+          // 탑승~하차 구간의 실제 경로만 추출
+          coords = _extractRouteSegment(
+            _actualRoutePath!.coordinates,
+            _currentStopIndex!,
+            _destinationStopIndex!,
+          );
+          print('✅ 실제 운행 경로 사용: 탑승(${_currentStopIndex}) → 하차(${_destinationStopIndex}) - ${coords.length}개 GPS 좌표');
+        } else {
+          // 전체 실제 경로 사용
+          coords = _actualRoutePath!.coordinates
+              .map((c) => NLatLng(c.lat, c.lon))
+              .toList();
+          print('✅ 실제 운행 경로 전체 사용: ${coords.length}개 GPS 좌표');
+        }
+      } else {
+        // ⚠️ 실제 경로 데이터가 없으면 정류장 좌표로 대체
+        if (_currentStopIndex != null && _destinationStopIndex != null) {
+          final startIndex = _currentStopIndex!;
+          final endIndex = _destinationStopIndex! + 1;
+
+          coords = _routeStops
+              .sublist(startIndex, endIndex.clamp(0, _routeStops.length))
+              .where((s) => s.lat != null && s.lon != null)
+              .map((s) => NLatLng(s.lat!, s.lon!))
+              .toList();
+
+          print('⚠️ 정류장 좌표 사용: 탑승(${startIndex}) → 하차(${_destinationStopIndex}) - ${coords.length}개 좌표');
+        } else {
+          coords = _routeStops
+              .where((s) => s.lat != null && s.lon != null)
+              .map((s) => NLatLng(s.lat!, s.lon!))
+              .toList();
+
+          print('⚠️ 하차 정류장 미확정 - 전체 정류장 좌표 사용');
+        }
+      }
+
+      if (coords.isNotEmpty) {
+        _routePath = NPathOverlay(
+          id: 'bus_route',
+          coords: coords,
+          width: 8,
+          color: _primaryColor,
+          outlineColor: Colors.white,
+          outlineWidth: 2,
+        );
+        await _mapController!.addOverlay(_routePath!);
+      }
 
       // 현재 위치 마커
       if (_currentPosition != null) {
@@ -510,7 +585,7 @@ class _BusNavigationScreenState extends State<BusNavigationScreen> {
       // 탑승 정류장 마커
       _boardingStopMarker = NMarker(
         id: 'boarding_stop',
-        position: NLatLng(widget.nearestStop.lat, widget.nearestStop.lon),
+        position: NLatLng(widget.nearestStop.lat ?? 0, widget.nearestStop.lon ?? 0),
         icon: const NOverlayImage.fromAssetImage('assets/images/pin_start.png'),
         size: const Size(40, 56),
         anchor: const NPoint(0.5, 1.0),
@@ -529,7 +604,7 @@ class _BusNavigationScreenState extends State<BusNavigationScreen> {
       if (_destinationStop != null) {
         _alightingStopMarker = NMarker(
           id: 'alighting_stop',
-          position: NLatLng(_destinationStop!.lat, _destinationStop!.lon),
+          position: NLatLng(_destinationStop!.lat ?? 0, _destinationStop!.lon ?? 0),
           icon: const NOverlayImage.fromAssetImage('assets/images/marker_stop_selected.png'),
           size: const Size(32, 32),
           anchor: const NPoint(0.5, 0.5),
@@ -575,16 +650,39 @@ class _BusNavigationScreenState extends State<BusNavigationScreen> {
     if (_mapController == null || _routeStops.isEmpty) return;
 
     try {
-      double minLat = _routeStops.first.lat;
-      double maxLat = _routeStops.first.lat;
-      double minLon = _routeStops.first.lon;
-      double maxLon = _routeStops.first.lon;
+      // 탑승~하차 구간의 정류장만 사용하여 바운드 계산
+      List<BusRouteStop> relevantStops = [];
 
-      for (var stop in _routeStops) {
-        minLat = math.min(minLat, stop.lat);
-        maxLat = math.max(maxLat, stop.lat);
-        minLon = math.min(minLon, stop.lon);
-        maxLon = math.max(maxLon, stop.lon);
+      if (_currentStopIndex != null && _destinationStopIndex != null) {
+        final startIndex = _currentStopIndex!;
+        final endIndex = _destinationStopIndex! + 1;
+        relevantStops = _routeStops.sublist(startIndex, endIndex.clamp(0, _routeStops.length));
+      } else {
+        relevantStops = _routeStops;
+      }
+
+      if (relevantStops.isEmpty) return;
+
+      double minLat = relevantStops.first.lat ?? 0;
+      double maxLat = relevantStops.first.lat ?? 0;
+      double minLon = relevantStops.first.lon ?? 0;
+      double maxLon = relevantStops.first.lon ?? 0;
+
+      for (var stop in relevantStops) {
+        if (stop.lat != null && stop.lon != null) {
+          minLat = math.min(minLat, stop.lat!);
+          maxLat = math.max(maxLat, stop.lat!);
+          minLon = math.min(minLon, stop.lon!);
+          maxLon = math.max(maxLon, stop.lon!);
+        }
+      }
+
+      // 현재 위치도 포함
+      if (_currentPosition != null) {
+        minLat = math.min(minLat, _currentPosition!.latitude);
+        maxLat = math.max(maxLat, _currentPosition!.latitude);
+        minLon = math.min(minLon, _currentPosition!.longitude);
+        maxLon = math.max(maxLon, _currentPosition!.longitude);
       }
 
       // 목적지도 포함
@@ -606,6 +704,80 @@ class _BusNavigationScreenState extends State<BusNavigationScreen> {
     } catch (e) {
       print('카메라 조정 오류: $e');
     }
+  }
+
+  /// 실제 경로에서 탑승~하차 구간만 추출
+  List<NLatLng> _extractRouteSegment(
+    List<RouteCoordinate> fullPath,
+    int boardingStopIndex,
+    int alightingStopIndex,
+  ) {
+    if (_routeStops.isEmpty || boardingStopIndex >= _routeStops.length || alightingStopIndex >= _routeStops.length) {
+      return [];
+    }
+
+    // 탑승 정류장과 하차 정류장의 GPS 좌표
+    final boardingStop = _routeStops[boardingStopIndex];
+    final alightingStop = _routeStops[alightingStopIndex];
+
+    if (boardingStop.lat == null || boardingStop.lon == null ||
+        alightingStop.lat == null || alightingStop.lon == null) {
+      return [];
+    }
+
+    // 전체 경로에서 탑승 정류장에 가장 가까운 좌표 찾기
+    int startPathIndex = _findClosestCoordinateIndex(
+      fullPath,
+      boardingStop.lat!,
+      boardingStop.lon!,
+    );
+
+    // 전체 경로에서 하차 정류장에 가장 가까운 좌표 찾기
+    int endPathIndex = _findClosestCoordinateIndex(
+      fullPath,
+      alightingStop.lat!,
+      alightingStop.lon!,
+    );
+
+    // 구간 추출
+    if (startPathIndex <= endPathIndex) {
+      return fullPath
+          .sublist(startPathIndex, endPathIndex + 1)
+          .map((c) => NLatLng(c.lat, c.lon))
+          .toList();
+    } else {
+      // 인덱스가 역순인 경우 (순환 노선 등)
+      return fullPath
+          .sublist(endPathIndex, startPathIndex + 1)
+          .map((c) => NLatLng(c.lat, c.lon))
+          .toList();
+    }
+  }
+
+  /// 좌표 배열에서 특정 위치에 가장 가까운 좌표의 인덱스 찾기
+  int _findClosestCoordinateIndex(
+    List<RouteCoordinate> coordinates,
+    double targetLat,
+    double targetLon,
+  ) {
+    int closestIndex = 0;
+    double minDistance = double.infinity;
+
+    for (int i = 0; i < coordinates.length; i++) {
+      final distance = Geolocator.distanceBetween(
+        coordinates[i].lat,
+        coordinates[i].lon,
+        targetLat,
+        targetLon,
+      );
+
+      if (distance < minDistance) {
+        minDistance = distance;
+        closestIndex = i;
+      }
+    }
+
+    return closestIndex;
   }
 
   /// 거리 포맷
@@ -1004,7 +1176,7 @@ class _BusNavigationScreenState extends State<BusNavigationScreen> {
 
           // 하단 현재 위치 버튼
           Positioned(
-            bottom: 20,
+            bottom: 60,
             right: 16,
             child: Container(
               decoration: BoxDecoration(
