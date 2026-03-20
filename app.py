@@ -2,8 +2,7 @@
 
 from flask import Flask, request, jsonify
 from flask_cors import CORS
-import mysql.connector
-from mysql.connector import Error
+import pymysql
 import requests
 from datetime import datetime, timedelta
 
@@ -159,28 +158,38 @@ def get_bus_route_segment_with_cache(bus_id, start_idx=-1, end_idx=-1):
     return []
 
 def get_db_connection():
-    """데이터베이스 연결 생성"""
+    """데이터베이스 연결 생성 (PyMySQL 사용)"""
     try:
         print(f"🔌 DB 연결 시도: {DB_CONFIG['host']}:{DB_CONFIG['database']}")
-        connection = mysql.connector.connect(
+
+        # PyMySQL 연결
+        connection = pymysql.connect(
             host=DB_CONFIG['host'],
+            port=DB_CONFIG['port'],
             user=DB_CONFIG['user'],
             password=DB_CONFIG['password'],
             database=DB_CONFIG['database'],
             charset=DB_CONFIG['charset'],
-            collation=DB_CONFIG['collation'],
-            use_unicode=DB_CONFIG['use_unicode'],
-            connection_timeout=10,
+            connect_timeout=10,
             autocommit=True,
+            cursorclass=pymysql.cursors.DictCursor  # dictionary 형태로 결과 반환
         )
-        if connection.is_connected():
-            print("✅ 데이터베이스 연결 성공")
-            return connection
-    except Error as e:
-        print(f"❌ 데이터베이스 연결 실패: {e}")
+        print("✅ 데이터베이스 연결 성공")
+        return connection
+    except pymysql.MySQLError as e:
+        print(f"❌ 데이터베이스 연결 실패 (PyMySQL Error): {e}")
+        print(f"   Error Code: {e.args[0] if e.args else 'N/A'}")
         print(f"   Host: {DB_CONFIG['host']}")
         print(f"   User: {DB_CONFIG['user']}")
         print(f"   Database: {DB_CONFIG['database']}")
+        raise
+    except Exception as e:
+        print(f"❌ 데이터베이스 연결 실패 (일반 오류): {type(e).__name__}: {e}")
+        print(f"   Host: {DB_CONFIG['host']}")
+        print(f"   User: {DB_CONFIG['user']}")
+        print(f"   Database: {DB_CONFIG['database']}")
+        import traceback
+        traceback.print_exc()
         raise
 
 def check_table_exists(cursor, table_name):
@@ -290,7 +299,7 @@ def test_connection():
     
     try:
         conn = get_db_connection()
-        cursor = conn.cursor(dictionary=True)
+        cursor = conn.cursor()
         
         cursor.execute("""
             SELECT 
@@ -336,13 +345,13 @@ def test_connection():
             "city_list": city_list
         }), 200
         
-    except Error as err:
+    except pymysql.MySQLError as err:
         print(f"테스트 오류: {err}")
         return jsonify({"status": "error", "message": str(err)}), 500
     finally:
         if cursor:
             cursor.close()
-        if conn and conn.is_connected():
+        if conn:
             conn.close()
 
 # ----------------------------------------------------
@@ -368,7 +377,7 @@ def get_top_place():
     
     try:
         conn = get_db_connection()
-        cursor = conn.cursor(dictionary=True)
+        cursor = conn.cursor()
         
         sql = f"""
             SELECT 
@@ -385,13 +394,13 @@ def get_top_place():
         print(f"✅ 조회 성공: {len(results)}개 장소 발견")
         return jsonify(results), 200
 
-    except Error as err:
+    except pymysql.MySQLError as err:
         print(f"❌ 데이터베이스 오류: {err}")
         return jsonify({"message": "데이터베이스 조회 오류", "error": str(err)}), 500
     finally:
         if cursor:
             cursor.close()
-        if conn and conn.is_connected():
+        if conn:
             conn.close()
 
 # ----------------------------------------------------
@@ -416,18 +425,18 @@ def get_nearby_places():
 
     try:
         conn = get_db_connection()
-        cursor = conn.cursor(dictionary=True)
+        cursor = conn.cursor()
 
         sql = f"""
-            SELECT 
+            SELECT
                 id, location, name, content, category, tel_number, type, local, search_num,
                 (6371 * acos(
-                    cos(radians(%s)) * cos(radians(SUBSTRING_INDEX(location, ',', 1))) * 
-                    cos(radians(SUBSTRING_INDEX(location, ',', -1)) - radians(%s)) + 
+                    cos(radians(%s)) * cos(radians(SUBSTRING_INDEX(location, ',', 1))) *
+                    cos(radians(SUBSTRING_INDEX(location, ',', -1)) - radians(%s)) +
                     sin(radians(%s)) * sin(radians(SUBSTRING_INDEX(location, ',', 1)))
                 )) AS distance_km
             FROM {TABLE_NAME}
-            WHERE location IS NOT NULL AND location != '' AND location LIKE '%,%'
+            WHERE location IS NOT NULL AND location != '' AND location LIKE '%%,%%'
             ORDER BY distance_km
             LIMIT 10;
         """
@@ -438,13 +447,13 @@ def get_nearby_places():
         print(f"✅ 주변 장소 조회 성공: {len(results)}개")
         return jsonify(results), 200
 
-    except Error as err:
+    except pymysql.MySQLError as err:
         print(f"❌ 데이터베이스 오류: {err}")
         return jsonify({"message": "데이터베이스 조회 오류", "error": str(err)}), 500
     finally:
         if cursor:
             cursor.close()
-        if conn and conn.is_connected():
+        if conn:
             conn.close()
 
 # ----------------------------------------------------
@@ -476,7 +485,7 @@ def get_nearby_events():
 
     try:
         conn = get_db_connection()
-        cursor = conn.cursor(dictionary=True)
+        cursor = conn.cursor()
 
         sql = f"""
             SELECT 
@@ -511,13 +520,13 @@ def get_nearby_events():
         print(f"✅ 문화 행사 조회 성공: {len(results)}개")
         return jsonify(results), 200
 
-    except Error as err:
+    except pymysql.MySQLError as err:
         print(f"❌ 데이터베이스 오류: {err}")
         return jsonify({"message": "데이터베이스 조회 오류", "error": str(err)}), 500
     finally:
         if cursor:
             cursor.close()
-        if conn and conn.is_connected():
+        if conn:
             conn.close()
 
 # ----------------------------------------------------
@@ -550,7 +559,7 @@ def get_nearby_bus_stops():
 
     try:
         conn = get_db_connection()
-        cursor = conn.cursor(dictionary=True)
+        cursor = conn.cursor()
 
         sql = f"""
             SELECT
@@ -590,13 +599,13 @@ def get_nearby_bus_stops():
         print(f"✅ 주변 버스 정류장 조회 성공: {len(transformed_results)}개")
         return jsonify(transformed_results), 200
 
-    except Error as err:
+    except pymysql.MySQLError as err:
         print(f"❌ 버스 정류장 DB 오류: {err}")
         return jsonify({"message": "데이터베이스 조회 오류", "error": str(err)}), 500
     finally:
         if cursor:
             cursor.close()
-        if conn and conn.is_connected():
+        if conn:
             conn.close()
 
 # ----------------------------------------------------
@@ -624,7 +633,7 @@ def get_bus_routes_at_stop(stop_code):
 
     try:
         conn = get_db_connection()
-        cursor = conn.cursor(dictionary=True)
+        cursor = conn.cursor()
 
         if not check_table_exists(cursor, 'tago_city_code'):
             print(f"⚠️ tago_city_code 테이블이 존재하지 않습니다.")
@@ -699,7 +708,7 @@ def get_bus_routes_at_stop(stop_code):
         print(f"✅ 경유 노선 조회 성공: {len(results)}개")
         return jsonify(results), 200
 
-    except Error as err:
+    except pymysql.MySQLError as err:
         print(f"❌ 버스 노선 DB 오류: {err}")
         if err.errno == 1146:
             return jsonify([]), 200
@@ -707,7 +716,7 @@ def get_bus_routes_at_stop(stop_code):
     finally:
         if cursor:
             cursor.close()
-        if conn and conn.is_connected():
+        if conn:
             conn.close()
 
 # ----------------------------------------------------
@@ -728,7 +737,7 @@ def get_bus_route_stops(route_id):
 
     try:
         conn = get_db_connection()
-        cursor = conn.cursor(dictionary=True)
+        cursor = conn.cursor()
 
         if not check_table_exists(cursor, 'tago_city_code'):
             print(f"⚠️ tago_city_code 테이블이 존재하지 않습니다.")
@@ -773,7 +782,7 @@ def get_bus_route_stops(route_id):
         print(f"✅ 노선 정류장 조회 성공: {len(results)}개")
         return jsonify(results), 200
 
-    except Error as err:
+    except pymysql.MySQLError as err:
         print(f"❌ 노선 정류장 DB 오류: {err}")
         if err.errno == 1146:
             return jsonify([]), 200
@@ -781,7 +790,7 @@ def get_bus_route_stops(route_id):
     finally:
         if cursor:
             cursor.close()
-        if conn and conn.is_connected():
+        if conn:
             conn.close()
 
 # ----------------------------------------------------
@@ -804,7 +813,7 @@ def get_bus_route_places(route_id):
 
     try:
         conn = get_db_connection()
-        cursor = conn.cursor(dictionary=True)
+        cursor = conn.cursor()
 
         if not check_table_exists(cursor, 'tago_city_code') or not check_table_exists(cursor, 'tago_route_list'):
             print(f"⚠️ 필요한 tago 테이블이 존재하지 않습니다.")
@@ -851,12 +860,12 @@ def get_bus_route_places(route_id):
                 SELECT DISTINCT
                     id, location, name, content, category, tel_number, type, local, search_num,
                     (6371 * acos(
-                        cos(radians(%s)) * cos(radians(SUBSTRING_INDEX(location, ',', 1))) * 
-                        cos(radians(SUBSTRING_INDEX(location, ',', -1)) - radians(%s)) + 
+                        cos(radians(%s)) * cos(radians(SUBSTRING_INDEX(location, ',', 1))) *
+                        cos(radians(SUBSTRING_INDEX(location, ',', -1)) - radians(%s)) +
                         sin(radians(%s)) * sin(radians(SUBSTRING_INDEX(location, ',', 1)))
                     )) AS distance_km
                 FROM {TABLE_NAME}
-                WHERE location IS NOT NULL AND location != '' AND location LIKE '%,%'
+                WHERE location IS NOT NULL AND location != '' AND location LIKE '%%,%%'
                     AND type = 6
                 HAVING distance_km <= %s
                 ORDER BY search_num DESC, distance_km ASC
@@ -875,12 +884,12 @@ def get_bus_route_places(route_id):
                 SELECT DISTINCT
                     id, location, name, content, category, tel_number, type, local, search_num,
                     (6371 * acos(
-                        cos(radians(%s)) * cos(radians(SUBSTRING_INDEX(location, ',', 1))) * 
-                        cos(radians(SUBSTRING_INDEX(location, ',', -1)) - radians(%s)) + 
+                        cos(radians(%s)) * cos(radians(SUBSTRING_INDEX(location, ',', 1))) *
+                        cos(radians(SUBSTRING_INDEX(location, ',', -1)) - radians(%s)) +
                         sin(radians(%s)) * sin(radians(SUBSTRING_INDEX(location, ',', 1)))
                     )) AS distance_km
                 FROM {TABLE_NAME}
-                WHERE location IS NOT NULL AND location != '' AND location LIKE '%,%'
+                WHERE location IS NOT NULL AND location != '' AND location LIKE '%%,%%'
                     AND type != 6 AND type IN (3, 4, 5)
                 HAVING distance_km <= %s
                 ORDER BY search_num DESC, distance_km ASC
@@ -942,13 +951,13 @@ def get_bus_route_places(route_id):
             "events": events[:20]
         }), 200
 
-    except Error as err:
+    except pymysql.MySQLError as err:
         print(f"❌ 노선 주변 장소 DB 오류: {err}")
         return jsonify({"message": "데이터베이스 조회 오류", "error": str(err)}), 500
     finally:
         if cursor:
             cursor.close()
-        if conn and conn.is_connected():
+        if conn:
             conn.close()
 
 
@@ -971,7 +980,7 @@ def search_places():
     
     try:
         conn = get_db_connection()
-        cursor = conn.cursor(dictionary=True)
+        cursor = conn.cursor()
         
         # 검색어로 이름 검색 (LIKE 사용)
         if lat is not None and lon is not None:
@@ -980,13 +989,13 @@ def search_places():
                 SELECT 
                     id, location, name, content, category, tel_number, type, local, update_date, search_num,
                     (6371 * acos(
-                        cos(radians(%s)) * cos(radians(SUBSTRING_INDEX(location, ',', 1))) * 
-                        cos(radians(SUBSTRING_INDEX(location, ',', -1)) - radians(%s)) + 
+                        cos(radians(%s)) * cos(radians(SUBSTRING_INDEX(location, ',', 1))) *
+                        cos(radians(SUBSTRING_INDEX(location, ',', -1)) - radians(%s)) +
                         sin(radians(%s)) * sin(radians(SUBSTRING_INDEX(location, ',', 1)))
                     )) AS distance_km
                 FROM {TABLE_NAME}
                 WHERE (name LIKE %s OR content LIKE %s OR category LIKE %s)
-                    AND location IS NOT NULL AND location != '' AND location LIKE '%,%'
+                    AND location IS NOT NULL AND location != '' AND location LIKE '%%,%%'
                 ORDER BY distance_km ASC, search_num DESC
                 LIMIT 50;
             """
@@ -1010,13 +1019,13 @@ def search_places():
         print(f"✅ 검색 결과: {len(results)}개")
         return jsonify(results), 200
 
-    except Error as err:
+    except pymysql.MySQLError as err:
         print(f"❌ 검색 오류: {err}")
         return jsonify({"message": "데이터베이스 조회 오류", "error": str(err)}), 500
     finally:
         if cursor:
             cursor.close()
-        if conn and conn.is_connected():
+        if conn:
             conn.close()
 
 # ----------------------------------------------------
@@ -1044,7 +1053,7 @@ def get_bus_route_detail_odsay():
             print(f"🔄 DB route_id를 버스번호로 변환: {bus_id}")
 
             conn = get_db_connection()
-            cursor = conn.cursor(dictionary=True)
+            cursor = conn.cursor()
 
             # tago_route_id 테이블에서 routeno 조회
             cursor.execute("SELECT routeno FROM tago_route_id WHERE routeid = %s", (bus_id,))
@@ -1164,7 +1173,7 @@ def get_bus_route_detail_odsay():
     finally:
         if cursor:
             cursor.close()
-        if conn and conn.is_connected():
+        if conn:
             conn.close()
 
 @app.route('/api/v1/odsay/search/bus', methods=['GET'])
@@ -1653,16 +1662,14 @@ def get_bus_route_path(route_id):
     try:
         city = request.args.get('city', default='경산', type=str)
 
-        print(f"=== 버스 실제 경로 API 호출 ===")
-        print(f"노선ID: {route_id}")
-        print(f"요청 도시명: {city}")
+        print(f"🛣️ 버스 실제 경로 조회 - 노선ID: {route_id}, 도시: {city}")
 
         conn = None
         cursor = None
 
         try:
             conn = get_db_connection()
-            cursor = conn.cursor(dictionary=True)
+            cursor = conn.cursor()
 
             # 1. 도시 코드 가져오기
             city_code = get_city_code(cursor, city)
@@ -1711,13 +1718,13 @@ def get_bus_route_path(route_id):
                 'coordinates': coordinates
             }), 200
 
-        except Error as err:
+        except pymysql.MySQLError as err:
             print(f"❌ DB 오류: {err}")
             return jsonify({'error': 'Database error', 'details': str(err)}), 500
         finally:
             if cursor:
                 cursor.close()
-            if conn and conn.is_connected():
+            if conn:
                 conn.close()
 
     except Exception as e:
@@ -1762,7 +1769,7 @@ def get_route_stops_as_fallback_path(cursor, route_id, city_code):
             'fallback': True  # 정류장 좌표 사용 표시
         }), 200
 
-    except Error as err:
+    except pymysql.MySQLError as err:
         print(f"❌ 정류장 좌표 조회 오류: {err}")
         return jsonify({'error': 'Database error', 'details': str(err)}), 500
 
